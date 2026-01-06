@@ -14,16 +14,19 @@ import (
 // LogEntry represents a single activity event
 type LogEntry struct {
 	Timestamp time.Time `json:"timestamp"`
-	Type      string    `json:"type"`             // "milk", "wet", "bm"
+	Type      string    `json:"type"`             // "milk", "wet", "bm", "breast"
 	Amount    float64   `json:"amount,omitempty"` // For milk, in ounces
+	Side      string    `json:"side,omitempty"`   // "L" or "R" for breast feeding
+	Duration  int       `json:"duration,omitempty"` // For breast feeding, in minutes
 }
 
 // StatsResponse represents the aggregated data returned to the client
 type StatsResponse struct {
-	TotalMilk   float64    `json:"total_milk"`
-	DiaperWet   int        `json:"diaper_wet"`
-	DiaperBM    int        `json:"diaper_bm"`
-	Logs        []LogEntry `json:"logs"`
+	TotalMilk       float64    `json:"total_milk"`
+	TotalBreastTime int        `json:"total_breast_time"`
+	DiaperWet       int        `json:"diaper_wet"`
+	DiaperBM        int        `json:"diaper_bm"`
+	Logs            []LogEntry `json:"logs"`
 }
 
 var (
@@ -62,8 +65,10 @@ func handleLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set timestamp if not provided (or overwrite to server time for consistency)
-	entry.Timestamp = time.Now()
+	// Set timestamp if not provided
+	if entry.Timestamp.IsZero() {
+		entry.Timestamp = time.Now()
+	}
 
 	if err := appendLog(entry); err != nil {
 		log.Printf("Error writing log: %v", err)
@@ -82,7 +87,7 @@ func handleStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	durationStr := r.URL.Query().Get("duration") // "1h", "24h", "all"
+	durationStr := r.URL.Query().Get("duration") // "1h", "24h", "today", "all"
 	
 	logs, err := readLogs()
 	if err != nil {
@@ -106,19 +111,19 @@ func handleStats(w http.ResponseWriter, r *http.Request) {
 			if now.Sub(entry.Timestamp) <= 24*time.Hour {
 				include = true
 			}
+		case "today":
+			// Check if same year, month, and day
+			y1, m1, d1 := now.Date()
+			y2, m2, d2 := entry.Timestamp.Local().Date()
+			if y1 == y2 && m1 == m2 && d1 == d2 {
+				include = true
+			}
 		case "all":
 			include = true
 		default:
-			// Default to 24h if unspecified, or handle as error?
-			// Requirement says "get last hour log and the past 24 hours and the entire logs"
-			// Let's default to 24h for safety, or just All if unclear.
-			// I'll default to all if empty, or strict if specified.
 			if durationStr == "" {
 				include = true
 			} else {
-				// if unknown duration, maybe ignore?
-				// For now, let's treat unknown as "all" or specific logic.
-				// But simpler: just check valid matches.
 				include = true
 			}
 		}
@@ -137,9 +142,14 @@ func handleStats(w http.ResponseWriter, r *http.Request) {
 		switch entry.Type {
 		case "milk":
 			stats.TotalMilk += entry.Amount
+		case "breast":
+			stats.TotalBreastTime += entry.Duration
 		case "wet":
 			stats.DiaperWet++
 		case "bm":
+			stats.DiaperBM++
+		case "wet+bm":
+			stats.DiaperWet++
 			stats.DiaperBM++
 		}
 	}

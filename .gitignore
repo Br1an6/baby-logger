@@ -8,7 +8,12 @@ yarn-debug.log*
 yarn-error.log*
 
 # Dependency directories
+baby-logger
+baby-logger-linux
+baby.log
 node_modules/
+script/
+
 jspm_packages/
 
 # TypeScript

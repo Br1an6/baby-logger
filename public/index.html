@@ -42,11 +42,15 @@
         .btn-milk { background-color: #e3f2fd; color: #1565c0; }
         .btn-milk:hover { background-color: #bbdefb; }
 
+        .btn-breast { background-color: #fce4ec; color: #c2185b; }
+        .btn-breast:hover { background-color: #f8bbd0; }
+
         .btn-action { background-color: #4caf50; color: white; width: 100%; margin-top: 15px; }
         .btn-action:disabled { background-color: #ccc; cursor: not-allowed; }
 
         .btn-diaper-wet { background-color: #fff9c4; color: #fbc02d; }
         .btn-diaper-bm { background-color: #d7ccc8; color: #5d4037; }
+        .btn-diaper-both { background-color: #e1f5fe; color: #0288d1; }
 
         .btn-stats { background-color: #f5f5f5; color: #333; border: 1px solid #ddd; }
         .btn-stats.active { background-color: #333; color: white; border-color: #333; }
@@ -61,14 +65,14 @@
         
         .stats-summary {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 10px;
             text-align: center;
             margin-bottom: 20px;
         }
         .stat-box { background: #f9f9f9; padding: 10px; border-radius: 8px; }
-        .stat-value { font-size: 1.5em; font-weight: bold; display: block; }
-        .stat-label { font-size: 0.8em; color: #666; }
+        .stat-value { font-size: 1.2em; font-weight: bold; display: block; }
+        .stat-label { font-size: 0.7em; color: #666; }
 
         #log-list {
             list-style: none;
@@ -83,6 +87,26 @@
             justify-content: space-between;
         }
         .log-time { color: #888; font-size: 0.9em; }
+
+        /* Form Inputs */
+        input[type="number"], input[type="datetime-local"], select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+        }
+        .input-group {
+            margin-bottom: 10px;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+            color: #555;
+        }
     </style>
 </head>
 <body>
@@ -102,12 +126,26 @@
         <button type="button" id="btn-record-milk" class="btn-action" onclick="submitMilk(this)">Record Milk</button>
     </div>
 
+    <!-- Breast Feeding Section -->
+    <div class="card">
+        <h2>🤱 Breast Feeding</h2>
+        <div class="input-group">
+            <label>Duration (minutes)</label>
+            <input type="number" id="breast-duration" value="15" min="1" step="1" style="text-align: center;">
+        </div>
+        <div class="btn-group">
+            <button type="button" class="btn-breast" onclick="submitBreastFeed('L', document.getElementById('breast-duration').value, this)">Left Breast</button>
+            <button type="button" class="btn-breast" onclick="submitBreastFeed('R', document.getElementById('breast-duration').value, this)">Right Breast</button>
+        </div>
+    </div>
+
     <!-- Diaper Section -->
     <div class="card">
         <h2>👶 Diaper Tracker</h2>
         <div class="btn-group">
-            <button type="button" class="btn-diaper-wet" onclick="recordEvent('wet', this)">💧 Wet Diaper</button>
-            <button type="button" class="btn-diaper-bm" onclick="recordEvent('bm', this)">💩 BM Diaper</button>
+            <button type="button" class="btn-diaper-wet" onclick="recordEvent('wet', this)">💧 Wet</button>
+            <button type="button" class="btn-diaper-bm" onclick="recordEvent('bm', this)">💩 BM</button>
+            <button type="button" class="btn-diaper-both" onclick="recordEvent('wet+bm', this)">💧💩 Both</button>
         </div>
     </div>
 
@@ -116,6 +154,7 @@
         <h2>📊 History & Stats</h2>
         <div class="btn-group">
             <button class="btn-stats" onclick="loadStats('1h')">Last 1 Hr</button>
+            <button class="btn-stats" onclick="loadStats('today')">Today</button>
             <button class="btn-stats" onclick="loadStats('24h')">Last 24 Hrs</button>
             <button class="btn-stats" onclick="loadStats('all')">All Time</button>
         </div>
@@ -128,6 +167,10 @@
                 <div class="stat-box">
                     <span class="stat-value" id="total-milk">0</span>
                     <span class="stat-label">oz Milk</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-value" id="total-breast">0</span>
+                    <span class="stat-label">min Breast</span>
                 </div>
                 <div class="stat-box">
                     <span class="stat-value" id="count-wet">0</span>
@@ -144,6 +187,42 @@
         </div>
     </div>
 
+    <!-- Manual Entry Section -->
+    <div class="card">
+        <h2>✏️ Manual Entry</h2>
+        <div class="input-group">
+            <label>Time</label>
+            <input type="datetime-local" id="manual-time">
+        </div>
+        <div class="input-group">
+            <label>Type</label>
+            <select id="manual-type" onchange="toggleManualAmount()">
+                <option value="milk">Milk (oz)</option>
+                <option value="wet">Wet Diaper</option>
+                <option value="bm">BM Diaper</option>
+                <option value="wet+bm">Both (Wet & BM)</option>
+                <option value="breast_left">Left Breast (min)</option>
+                <option value="breast_right">Right Breast (min)</option>
+            </select>
+        </div>
+        <div class="input-group" id="manual-amount-group">
+            <label id="manual-amount-label">Amount (oz)</label>
+            <input type="number" id="manual-amount" placeholder="0" step="0.5">
+        </div>
+        <button type="button" class="btn-action" style="background-color: #607d8b;" onclick="submitManualEntry()">Save Manual Entry</button>
+    </div>
+
     <script src="app.js"></script>
+    <script>
+        // Set default manual time to now
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        document.getElementById('manual-time').value = now.toISOString().slice(0, 16);
+        
+        // Initialize manual amount visibility
+        if (typeof toggleManualAmount === 'function') {
+            toggleManualAmount();
+        }
+    </script>
 </body>
 </html>

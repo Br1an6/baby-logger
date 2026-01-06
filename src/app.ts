@@ -1,6 +1,15 @@
 // State
 let currentMilkAmount: number = 0;
 
+// Log Entry Interface
+interface LogEntry {
+    type: string;
+    amount?: number;
+    side?: string;
+    duration?: number;
+    timestamp?: string; // ISO string
+}
+
 // Update UI
 function updateMilkDisplay() {
     const el = document.getElementById('milk-amount');
@@ -26,25 +35,99 @@ async function submitMilk(btn?: HTMLElement) {
         return;
     }
     
-    await sendLog('milk', currentMilkAmount, btn);
+    await sendLog({ type: 'milk', amount: currentMilkAmount }, btn);
     resetMilk();
 }
 
+// Submit Breast Feed
+async function submitBreastFeed(side: string, durationStr: string, btn?: HTMLElement) {
+    const duration = parseInt(durationStr);
+    if (isNaN(duration) || duration <= 0) {
+        alert("Please enter a valid duration in minutes.");
+        return;
+    }
+
+    await sendLog({ type: 'breast', side: side, duration: duration }, btn);
+}
+
+// Toggle Manual Amount Field
+function toggleManualAmount() {
+    const typeInput = document.getElementById('manual-type') as HTMLSelectElement;
+    const amountGroup = document.getElementById('manual-amount-group') as HTMLElement;
+    const amountLabel = document.getElementById('manual-amount-label') as HTMLElement;
+    const type = typeInput.value;
+
+    if (type === 'wet' || type === 'bm' || type === 'wet+bm') {
+        amountGroup.style.display = 'none';
+    } else {
+        amountGroup.style.display = 'block';
+        if (type === 'milk') {
+            amountLabel.innerText = 'Amount (oz)';
+        } else {
+            amountLabel.innerText = 'Duration (min)';
+        }
+    }
+}
+
+// Submit Manual Entry
+async function submitManualEntry() {
+    const timeInput = document.getElementById('manual-time') as HTMLInputElement;
+    const typeInput = document.getElementById('manual-type') as HTMLSelectElement;
+    const amountInput = document.getElementById('manual-amount') as HTMLInputElement;
+
+    if (!timeInput.value) {
+        alert("Please select a time.");
+        return;
+    }
+
+    const timestamp = new Date(timeInput.value).toISOString();
+    const type = typeInput.value;
+    const val = parseFloat(amountInput.value);
+
+    const entry: LogEntry = { type, timestamp };
+
+    if (type === 'milk') {
+        if (isNaN(val) || val <= 0) {
+             alert("Please enter a valid amount (oz).");
+             return;
+        }
+        entry.amount = val;
+    } else if (type === 'breast_left') {
+        entry.type = 'breast';
+        entry.side = 'L';
+        if (isNaN(val) || val <= 0) {
+            alert("Please enter a valid duration (min).");
+            return;
+        }
+        entry.duration = Math.round(val);
+    } else if (type === 'breast_right') {
+        entry.type = 'breast';
+        entry.side = 'R';
+         if (isNaN(val) || val <= 0) {
+            alert("Please enter a valid duration (min).");
+            return;
+        }
+        entry.duration = Math.round(val);
+    } else if (type === 'wet' || type === 'bm' || type === 'wet+bm') {
+        // No extra fields needed
+    }
+
+    await sendLog(entry);
+    alert("Manual entry saved.");
+}
+
 // Record generic event
-async function recordEvent(type: 'wet' | 'bm', btn?: HTMLElement) {
-    await sendLog(type, undefined, btn);
+async function recordEvent(type: 'wet' | 'bm' | 'wet+bm', btn?: HTMLElement) {
+    await sendLog({ type }, btn);
 }
 
 // API Call
-async function sendLog(type: string, amount?: number, btn?: HTMLElement) {
+async function sendLog(entry: LogEntry, btn?: HTMLElement) {
     try {
-        const payload: any = { type };
-        if (amount !== undefined) payload.amount = amount;
-
         const res = await fetch('/api/log', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(entry)
         });
 
         if (!res.ok) throw new Error('Failed to save');
@@ -63,6 +146,15 @@ async function sendLog(type: string, amount?: number, btn?: HTMLElement) {
 
 // Load Stats
 async function loadStats(duration: string) {
+    // Highlight active button
+    document.querySelectorAll('.btn-stats').forEach(b => b.classList.remove('active'));
+    const btns = document.querySelectorAll('.btn-stats');
+    btns.forEach(b => {
+        if (b.getAttribute('onclick')?.includes(`'${duration}'`)) {
+            b.classList.add('active');
+        }
+    });
+
     try {
         const res = await fetch(`/api/stats?duration=${duration}`);
         if (!res.ok) throw new Error("Failed to load stats");
@@ -86,12 +178,16 @@ async function undoLast() {
             throw new Error(txt || "Failed to delete");
         }
         
-        // Refresh stats if visible, otherwise just alert
+        // Refresh stats if visible
         const container = document.getElementById('stats-container');
         if (container && container.style.display !== 'none') {
-             // Reload current view if possible, defaulting to '24h' for simplicity or tracking state
-             // For now, let's just reload 24h as a safe default refresh
-             await loadStats('24h');
+             const activeBtn = document.querySelector('.btn-stats.active');
+             let duration = '24h';
+             if (activeBtn) {
+                 const match = activeBtn.getAttribute('onclick')?.match(/'([^']+)'/);
+                 if (match) duration = match[1];
+             }
+             await loadStats(duration);
         } else {
             alert("Last entry deleted.");
         }
@@ -107,6 +203,9 @@ function renderStats(data: any) {
     const totalMilk = document.getElementById('total-milk');
     if (totalMilk) totalMilk.innerText = (data.total_milk || 0).toFixed(1);
 
+    const totalBreast = document.getElementById('total-breast');
+    if (totalBreast) totalBreast.innerText = (data.total_breast_time || 0).toString();
+
     const countWet = document.getElementById('count-wet');
     if (countWet) countWet.innerText = (data.diaper_wet || 0).toString();
 
@@ -117,7 +216,6 @@ function renderStats(data: any) {
     if (list) {
         list.innerHTML = '';
         const logs = data.logs || [];
-        // Sort newest first
         logs.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
         logs.forEach((log: any) => {
@@ -137,6 +235,12 @@ function renderStats(data: any) {
             } else if (log.type === 'bm') {
                 icon = "💩";
                 desc = "BM Diaper";
+            } else if (log.type === 'wet+bm') {
+                icon = "💧💩";
+                desc = "Wet & BM Diaper";
+            } else if (log.type === 'breast') {
+                icon = "🤱";
+                desc = `Breast (${log.side}) - ${log.duration} min`;
             }
 
             li.innerHTML = `<span>${icon} ${desc}</span> <span class="log-time">${timeStr}</span>`;
@@ -149,6 +253,9 @@ function renderStats(data: any) {
 (window as any).addMilk = addMilk;
 (window as any).resetMilk = resetMilk;
 (window as any).submitMilk = submitMilk;
+(window as any).submitBreastFeed = submitBreastFeed;
+(window as any).submitManualEntry = submitManualEntry;
 (window as any).recordEvent = recordEvent;
 (window as any).loadStats = loadStats;
 (window as any).undoLast = undoLast;
+(window as any).toggleManualAmount = toggleManualAmount;

@@ -80,6 +80,4 @@ All data is stored in `baby.log` in the running directory. Back up this file to 
 * Add Auth method
 * Configuration flags for port, file size and file path
 * Log rotation and cache size
-* Breast feeding options
-* Makefile for lazy-deploy
 * Release files
