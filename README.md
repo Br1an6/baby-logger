@@ -24,12 +24,34 @@ go run main.go
 
 Open your browser to: **http://localhost:4011**
 
-### 2. Usage
+You can configure the port using the `PORT` environment variable or the `-port` flag:
+
+```bash
+# Using environment variable
+PORT=5000 go run main.go
+
+# Using flag
+go run main.go -port=5000
+```
+
+### 2. Using Makefile
+You can also use the included `Makefile` to build and run the project:
+
+- **Build**: `make build` (Compiles TypeScript and Go binary)
+- **Run**: `make run` (Builds and runs the binary)
+- **Clean**: `make clean` (Removes build artifacts)
+
+To run on a custom port with make:
+```bash
+PORT=5000 make run
+```
+
+### 3. Usage
 - **Milk**: Tap "+ 0.5 oz", "+ 1.0 oz" etc. to sum up the amount. Click "Record Milk" to save.
 - **Diaper**: Tap "Wet Diaper" or "BM Diaper" to save immediately.
 - **History**: Click "Last 1 Hr", "Last 24 Hrs", or "All Time" to see the summary and log list.
 
-### 3. Development (Frontend)
+### 4. Development (Frontend)
 If you want to modify the TypeScript code in `src/app.ts`:
 
 1.  Install dependencies:
@@ -73,13 +95,13 @@ To deploy to a remote Linux ARM64 server (like `192.168.0.123`):
 ## Data
 All data is stored in `baby.log` in the running directory. Back up this file to save your history.
 
-[web preview](https://raw.githack.com/Br1an6/baby-logger/main/public/index.html)
+[UI Preview](https://raw.githack.com/Br1an6/baby-logger/main/public/index.html) (Static, no backend)
 
 ![alt tag](https://github.com/Br1an6/baby-logger/blob/main/img/baby-logger.png)
 
 
 ## TODO:
 * Add Auth method
-* Configuration flags for port, file size and file path
+* Configuration flags for file size and file path
 * Log rotation and cache size
 * Release files

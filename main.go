@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -39,9 +40,16 @@ func main() {
 	http.HandleFunc("/api/log/last", handleDeleteLast)
 	http.HandleFunc("/api/stats", handleStats)
 
-	port := "4011"
-	fmt.Printf("Server starting on http://0.0.0.0:%s\n", port)
-	if err := http.ListenAndServe("0.0.0.0:"+port, nil); err != nil {
+	// Port configuration
+	defaultPort := os.Getenv("PORT")
+	if defaultPort == "" {
+		defaultPort = "4011"
+	}
+	port := flag.String("port", defaultPort, "Port to run the server on")
+	flag.Parse()
+
+	fmt.Printf("Server starting on http://0.0.0.0:%s\n", *port)
+	if err := http.ListenAndServe("0.0.0.0:"+*port, nil); err != nil {
 		fmt.Printf("Error starting server: %v\n", err)
 		log.Fatal(err)
 	}
