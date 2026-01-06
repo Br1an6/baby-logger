@@ -1,7 +1,7 @@
 # Baby Logger
 
 A simple self-hosted web service to track baby activities (Milk, Wet Diapers, BM Diapers).
-Built with a **Golang** backend and **TypeScript** frontend.
+Built with a **Golang** backend and **TypeScript** frontend. Please note that this has no Auth options. Please run this locally.
 
 ## Features
 - **Milk Tracking**: Accumulate ounces (0.5, 1, 2) and record.
@@ -72,3 +72,5 @@ To deploy to a remote Linux ARM64 server (like `192.168.0.61`):
 
 ## Data
 All data is stored in `baby.log` in the running directory. Back up this file to save your history.
+
+![alt tag](https://github.com/Br1an6/baby-logger/blob/master/img/baby-logger.png)
