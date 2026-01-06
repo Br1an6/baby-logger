@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ES6",
+    "module": "None",
+    "strict": true,
+    "outDir": "./public",
+    "rootDir": "./src",
+    "removeComments": true
+  },
+  "include": [
+    "src/**/*"
+  ]
+}
