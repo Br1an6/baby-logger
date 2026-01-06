@@ -20,20 +20,15 @@ type LogEntry struct {
 	Duration  int       `json:"duration,omitempty"` // For breast feeding, in minutes
 }
 
-// StatsResponse represents the aggregated data returned to the client
-type StatsResponse struct {
-	TotalMilk       float64    `json:"total_milk"`
-	TotalBreastTime int        `json:"total_breast_time"`
-	DiaperWet       int        `json:"diaper_wet"`
-	DiaperBM        int        `json:"diaper_bm"`
-	Logs            []LogEntry `json:"logs"`
-}
+
 
 var (
 	logFilePath = "baby.log"
 	fileMu      sync.Mutex
 )
 
+// main is the entry point of the application.
+// It sets up the HTTP server, defines the API endpoints, and starts listening on port 4011.
 func main() {
 	// Serve static files from the "public" directory
 	fs := http.FileServer(http.Dir("./public"))
@@ -52,113 +47,18 @@ func main() {
 	}
 }
 
-// handleLog processes POST requests to record a new event
-func handleLog(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
-	var entry LogEntry
-	if err := json.NewDecoder(r.Body).Decode(&entry); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
 
-	// Set timestamp if not provided
-	if entry.Timestamp.IsZero() {
-		entry.Timestamp = time.Now()
-	}
 
-	if err := appendLog(entry); err != nil {
-		log.Printf("Error writing log: %v", err)
-		http.Error(w, "Failed to save log", http.StatusInternalServerError)
-		return
-	}
 
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{"status": "saved"})
-}
-
-// handleStats processes GET requests to retrieve logs and totals
-func handleStats(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	durationStr := r.URL.Query().Get("duration") // "1h", "24h", "today", "all"
-	
-	logs, err := readLogs()
-	if err != nil {
-		log.Printf("Error reading logs: %v", err)
-		http.Error(w, "Failed to read logs", http.StatusInternalServerError)
-		return
-	}
-
-	filteredLogs := []LogEntry{}
-	now := time.Now()
-
-	// Filter based on duration
-	for _, entry := range logs {
-		include := false
-		switch durationStr {
-		case "1h":
-			if now.Sub(entry.Timestamp) <= time.Hour {
-				include = true
-			}
-		case "24h":
-			if now.Sub(entry.Timestamp) <= 24*time.Hour {
-				include = true
-			}
-		case "today":
-			// Check if same year, month, and day
-			y1, m1, d1 := now.Date()
-			y2, m2, d2 := entry.Timestamp.Local().Date()
-			if y1 == y2 && m1 == m2 && d1 == d2 {
-				include = true
-			}
-		case "all":
-			include = true
-		default:
-			if durationStr == "" {
-				include = true
-			} else {
-				include = true
-			}
-		}
-
-		if include {
-			filteredLogs = append(filteredLogs, entry)
-		}
-	}
-
-	// Calculate totals
-	stats := StatsResponse{
-		Logs: filteredLogs,
-	}
-
-	for _, entry := range filteredLogs {
-		switch entry.Type {
-		case "milk":
-			stats.TotalMilk += entry.Amount
-		case "breast":
-			stats.TotalBreastTime += entry.Duration
-		case "wet":
-			stats.DiaperWet++
-		case "bm":
-			stats.DiaperBM++
-		case "wet+bm":
-			stats.DiaperWet++
-			stats.DiaperBM++
-		}
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(stats)
-}
-
-// appendLog writes a log entry to the file safely
+// appendLog appends a new LogEntry to the persistent log file in a thread-safe manner.
+// It marshals the entry to JSON and appends it as a new line in the file.
+//
+// Args:
+//   entry: The LogEntry struct to be saved.
+//
+// Returns:
+//   error: An error if opening or writing to the file fails, otherwise nil.
 func appendLog(entry LogEntry) error {
 	fileMu.Lock()
 	defer fileMu.Unlock()
@@ -184,7 +84,12 @@ func appendLog(entry LogEntry) error {
 	return nil
 }
 
-// readLogs reads all logs from the file
+// readLogs reads and parses all LogEntry records from the persistent log file.
+// It is thread-safe and ignores any corrupt lines in the file.
+//
+// Returns:
+//   []LogEntry: A slice of LogEntry structs read from the file.
+//   error: An error if opening or reading the file fails, otherwise nil.
 func readLogs() ([]LogEntry, error) {
 	fileMu.Lock()
 	defer fileMu.Unlock()
@@ -221,57 +126,4 @@ func readLogs() ([]LogEntry, error) {
 	return logs, nil
 }
 
-// handleDeleteLast removes the most recent log entry
-func handleDeleteLast(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodDelete && r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
-	fileMu.Lock()
-	defer fileMu.Unlock()
-
-	// Read all lines
-	f, err := os.Open(logFilePath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			http.Error(w, "No logs to delete", http.StatusNotFound)
-			return
-		}
-		http.Error(w, "Failed to read logs", http.StatusInternalServerError)
-		return
-	}
-	
-	var lines []string
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
-	f.Close()
-
-	if len(lines) == 0 {
-		http.Error(w, "Log file is empty", http.StatusNotFound)
-		return
-	}
-
-	// Remove the last line
-	lines = lines[:len(lines)-1]
-
-	// Rewrite the file
-	f, err = os.OpenFile(logFilePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		http.Error(w, "Failed to open log file for rewriting", http.StatusInternalServerError)
-		return
-	}
-	defer f.Close()
-
-	for _, line := range lines {
-		if _, err := f.WriteString(line + "\n"); err != nil {
-			http.Error(w, "Failed to write log file", http.StatusInternalServerError)
-			return
-		}
-	}
-
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "deleted"})
-}

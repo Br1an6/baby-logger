@@ -8,7 +8,7 @@ all: build
 # 2. Build Go binary
 build:
 	npx tsc
-	go build -o baby-logger main.go
+	go build -o baby-logger .
 
 # Run the application locally
 run: build
