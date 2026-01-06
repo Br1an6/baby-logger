@@ -17,3 +17,4 @@ jspm_packages/
 # Build artifacts
 dist/
 public/app.js
+release/

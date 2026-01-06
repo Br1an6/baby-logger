@@ -94,20 +94,20 @@
         <h2>🍼 Milk Tracker</h2>
         <div class="display-amount"><span id="milk-amount">0</span> oz</div>
         <div class="btn-group">
-            <button class="btn-milk" onclick="addMilk(0.5)">+ 0.5 oz</button>
-            <button class="btn-milk" onclick="addMilk(1.0)">+ 1.0 oz</button>
-            <button class="btn-milk" onclick="addMilk(2.0)">+ 2.0 oz</button>
-            <button class="btn-milk" style="background-color: #ffcdd2; color: #c62828;" onclick="resetMilk()">Clear</button>
+            <button type="button" class="btn-milk" onclick="addMilk(0.5)">+ 0.5 oz</button>
+            <button type="button" class="btn-milk" onclick="addMilk(1.0)">+ 1.0 oz</button>
+            <button type="button" class="btn-milk" onclick="addMilk(2.0)">+ 2.0 oz</button>
+            <button type="button" class="btn-milk" style="background-color: #ffcdd2; color: #c62828;" onclick="resetMilk()">Clear</button>
         </div>
-        <button id="btn-record-milk" class="btn-action" onclick="submitMilk()">Record Milk</button>
+        <button type="button" id="btn-record-milk" class="btn-action" onclick="submitMilk(this)">Record Milk</button>
     </div>
 
     <!-- Diaper Section -->
     <div class="card">
         <h2>👶 Diaper Tracker</h2>
         <div class="btn-group">
-            <button class="btn-diaper-wet" onclick="recordEvent('wet')">💧 Wet Diaper</button>
-            <button class="btn-diaper-bm" onclick="recordEvent('bm')">💩 BM Diaper</button>
+            <button type="button" class="btn-diaper-wet" onclick="recordEvent('wet', this)">💧 Wet Diaper</button>
+            <button type="button" class="btn-diaper-bm" onclick="recordEvent('bm', this)">💩 BM Diaper</button>
         </div>
     </div>
 

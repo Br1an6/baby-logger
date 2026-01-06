@@ -50,7 +50,7 @@ If you want to modify the TypeScript code in `src/app.ts`:
 3.  Access: http://localhost:4011
 
 ### Option 2: Remote Deployment (e.g., Raspberry Pi)
-To deploy to a remote Linux ARM64 server (like `192.168.0.61`):
+To deploy to a remote Linux ARM64 server (like `192.168.0.123`):
 
 1.  **Cross-Compile**:
     ```bash
@@ -82,3 +82,4 @@ All data is stored in `baby.log` in the running directory. Back up this file to 
 * Log rotation and cache size
 * Breast feeding options
 * Makefile for lazy-deploy
+* Release files

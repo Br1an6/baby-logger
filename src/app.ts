@@ -20,23 +20,23 @@ function resetMilk() {
 }
 
 // Submit Milk
-async function submitMilk() {
+async function submitMilk(btn?: HTMLElement) {
     if (currentMilkAmount <= 0) {
         alert("Please add milk amount first.");
         return;
     }
     
-    await sendLog('milk', currentMilkAmount);
+    await sendLog('milk', currentMilkAmount, btn);
     resetMilk();
 }
 
 // Record generic event
-async function recordEvent(type: 'wet' | 'bm') {
-    await sendLog(type);
+async function recordEvent(type: 'wet' | 'bm', btn?: HTMLElement) {
+    await sendLog(type, undefined, btn);
 }
 
 // API Call
-async function sendLog(type: string, amount?: number) {
+async function sendLog(type: string, amount?: number, btn?: HTMLElement) {
     try {
         const payload: any = { type };
         if (amount !== undefined) payload.amount = amount;
@@ -50,11 +50,11 @@ async function sendLog(type: string, amount?: number) {
         if (!res.ok) throw new Error('Failed to save');
         
         // Visual feedback
-        const btn = document.activeElement as HTMLElement;
-        if(btn) {
-             const originalText = btn.innerText;
-             btn.innerText = "Saved!";
-             setTimeout(() => btn.innerText = originalText, 1000);
+        const target = btn || (document.activeElement as HTMLElement);
+        if(target && target.tagName !== 'BODY' && target.tagName !== 'HTML') {
+             const originalText = target.innerText;
+             target.innerText = "Saved!";
+             setTimeout(() => target.innerText = originalText, 1000);
         }
     } catch (err) {
         alert("Error saving log: " + err);
