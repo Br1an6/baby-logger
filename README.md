@@ -73,6 +73,8 @@ To deploy to a remote Linux ARM64 server (like `192.168.0.123`):
 ## Data
 All data is stored in `baby.log` in the running directory. Back up this file to save your history.
 
+[web preview](https://raw.githack.com/Br1an6/baby-logger/main/public/index.html)
+
 ![alt tag](https://github.com/Br1an6/baby-logger/blob/main/img/baby-logger.png)
 
 
