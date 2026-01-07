@@ -2,8 +2,12 @@
 
 ![version](https://img.shields.io/badge/version-0.1.0-blue)
 
-A simple self-hosted web service to track baby activities (Milk, Wet Diapers, BM Diapers).
+A simple self-hosted web service to track baby activities (Milk, Wet Diapers, BM Diapers ... etc).
 Built with a **Golang** backend and **TypeScript** frontend. Please note that this has no Auth options. Please run this locally.
+
+[UI Preview](https://raw.githack.com/Br1an6/baby-logger/main/public/index.html) (Static, no backend)
+
+![alt tag](https://github.com/Br1an6/baby-logger/blob/main/img/baby-logger.png)
 
 ## Features
 - **Milk Tracking**: Accumulate ounces (0.5, 1, 2) and record feedings.
@@ -104,11 +108,6 @@ To deploy to a remote Linux ARM64 server (like `192.168.0.123`):
 
 ## Data
 All data is stored in `baby.log` in the running directory. Back up this file to save your history.
-
-[UI Preview](https://raw.githack.com/Br1an6/baby-logger/main/public/index.html) (Static, no backend)
-
-![alt tag](https://github.com/Br1an6/baby-logger/blob/main/img/baby-logger.png)
-
 
 ## TODO:
 * Add Auth method
