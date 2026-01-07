@@ -80,10 +80,9 @@ If you want to modify the TypeScript code in `src/app.ts`:
 
 ## Deployment
 
-### Option 1: Local Deployment (macOS)
-1.  Build: `go build -o baby-logger`
-2.  Run: `./baby-logger`
-3.  Access: http://localhost:4011
+### Option 1: Local Deployment (e.g., macOS)
+1.  `make run`
+2.  Access: http://localhost:4011
 
 ### Option 2: Remote Deployment (e.g., Raspberry Pi)
 To deploy to a remote Linux ARM64 server (like `192.168.0.123`):
