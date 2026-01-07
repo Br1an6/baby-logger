@@ -305,8 +305,13 @@ function toggleDarkMode() {
 }
 
 function initDarkMode() {
-    if (localStorage.getItem('darkMode') === 'true') {
+    const savedMode = localStorage.getItem('darkMode');
+    if (savedMode === 'true') {
         document.body.classList.add('dark-mode');
+    } else if (savedMode === null) {
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.body.classList.add('dark-mode');
+        }
     }
 }
 
