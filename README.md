@@ -87,6 +87,8 @@ If you want to modify the TypeScript code in `src/app.ts`:
 ### Option 2: Remote Deployment (e.g., Raspberry Pi)
 To deploy to a remote Linux ARM64 server (like `192.168.0.123`):
 
+A sample deployment script is provided at [sample/deploy.sh](https://github.com/Br1an6/baby-logger/blob/main/sample/deploy.sh) for convenience. You can use it as a template to automate the cross-compilation and file upload process.
+
 1.  **Cross-Compile**:
     ```bash
     GOOS=linux GOARCH=arm64 go build -o baby-logger-linux-arm64
