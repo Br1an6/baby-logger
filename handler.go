@@ -12,6 +12,7 @@ import (
 // StatsResponse represents the aggregated data returned to the client
 type StatsResponse struct {
 	TotalMilk       float64    `json:"total_milk"`
+	TotalPumped     float64    `json:"total_pumped"`
 	TotalBreastTime int        `json:"total_breast_time"`
 	DiaperWet       int        `json:"diaper_wet"`
 	DiaperBM        int        `json:"diaper_bm"`
@@ -118,6 +119,8 @@ func handleStats(w http.ResponseWriter, r *http.Request) {
 		switch entry.Type {
 		case "milk":
 			stats.TotalMilk += entry.Amount
+		case "pump":
+			stats.TotalPumped += entry.Amount
 		case "breast":
 			stats.TotalBreastTime += entry.Duration
 		case "wet":

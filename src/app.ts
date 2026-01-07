@@ -1,5 +1,6 @@
 // State
 let currentMilkAmount: number = 0;
+let currentPumpAmount: number = 0;
 
 // Log Entry Interface
 interface LogEntry {
@@ -16,16 +17,33 @@ function updateMilkDisplay() {
     if (el) el.innerText = currentMilkAmount.toString();
 }
 
+function updatePumpDisplay() {
+    const el = document.getElementById('pump-amount');
+    if (el) el.innerText = currentPumpAmount.toString();
+}
+
 // Add Milk
 function addMilk(amount: number) {
     currentMilkAmount += amount;
     updateMilkDisplay();
 }
 
+// Add Pump
+function addPump(amount: number) {
+    currentPumpAmount += amount;
+    updatePumpDisplay();
+}
+
 // Reset Milk
 function resetMilk() {
     currentMilkAmount = 0;
     updateMilkDisplay();
+}
+
+// Reset Pump
+function resetPump() {
+    currentPumpAmount = 0;
+    updatePumpDisplay();
 }
 
 // Submit Milk
@@ -37,6 +55,17 @@ async function submitMilk(btn?: HTMLElement) {
     
     await sendLog({ type: 'milk', amount: currentMilkAmount }, btn);
     resetMilk();
+}
+
+// Submit Pump
+async function submitPump(btn?: HTMLElement) {
+    if (currentPumpAmount <= 0) {
+        alert("Please add pump amount first.");
+        return;
+    }
+    
+    await sendLog({ type: 'pump', amount: currentPumpAmount }, btn);
+    resetPump();
 }
 
 // Submit Breast Feed
@@ -61,7 +90,7 @@ function toggleManualAmount() {
         amountGroup.style.display = 'none';
     } else {
         amountGroup.style.display = 'block';
-        if (type === 'milk') {
+        if (type === 'milk' || type === 'pump') {
             amountLabel.innerText = 'Amount (oz)';
         } else {
             amountLabel.innerText = 'Duration (min)';
@@ -86,7 +115,7 @@ async function submitManualEntry() {
 
     const entry: LogEntry = { type, timestamp };
 
-    if (type === 'milk') {
+    if (type === 'milk' || type === 'pump') {
         if (isNaN(val) || val <= 0) {
              alert("Please enter a valid amount (oz).");
              return;
@@ -203,6 +232,9 @@ function renderStats(data: any) {
     const totalMilk = document.getElementById('total-milk');
     if (totalMilk) totalMilk.innerText = (data.total_milk || 0).toFixed(1);
 
+    const totalPumped = document.getElementById('total-pumped');
+    if (totalPumped) totalPumped.innerText = (data.total_pumped || 0).toFixed(1);
+
     const totalBreast = document.getElementById('total-breast');
     if (totalBreast) totalBreast.innerText = (data.total_breast_time || 0).toString();
 
@@ -229,6 +261,9 @@ function renderStats(data: any) {
             if (log.type === 'milk') {
                 icon = "🍼";
                 desc = `Milk (${log.amount} oz)`;
+            } else if (log.type === 'pump') {
+                icon = "🧴";
+                desc = `Pump (${log.amount} oz)`;
             } else if (log.type === 'wet') {
                 icon = "💧";
                 desc = "Wet Diaper";
@@ -253,9 +288,28 @@ function renderStats(data: any) {
 (window as any).addMilk = addMilk;
 (window as any).resetMilk = resetMilk;
 (window as any).submitMilk = submitMilk;
+(window as any).addPump = addPump;
+(window as any).resetPump = resetPump;
+(window as any).submitPump = submitPump;
 (window as any).submitBreastFeed = submitBreastFeed;
 (window as any).submitManualEntry = submitManualEntry;
 (window as any).recordEvent = recordEvent;
 (window as any).loadStats = loadStats;
 (window as any).undoLast = undoLast;
 (window as any).toggleManualAmount = toggleManualAmount;
+
+// Dark Mode
+function toggleDarkMode() {
+    document.body.classList.toggle('dark-mode');
+    localStorage.setItem('darkMode', document.body.classList.contains('dark-mode') ? 'true' : 'false');
+}
+
+function initDarkMode() {
+    if (localStorage.getItem('darkMode') === 'true') {
+        document.body.classList.add('dark-mode');
+    }
+}
+
+// Initialize
+initDarkMode();
+(window as any).toggleDarkMode = toggleDarkMode;

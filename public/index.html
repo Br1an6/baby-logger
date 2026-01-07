@@ -5,21 +5,46 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Baby Logger</title>
     <style>
+        :root {
+            --bg-color: #f4f6f8;
+            --text-color: #333;
+            --card-bg: white;
+            --card-shadow: rgba(0,0,0,0.05);
+            --stat-bg: #f9f9f9;
+            --border-color: #eee;
+            --input-bg: #fff;
+            --input-text: #000;
+            --input-border: #ddd;
+        }
+
+        body.dark-mode {
+            --bg-color: #121212;
+            --text-color: #ffffff;
+            --card-bg: #1e1e1e;
+            --card-shadow: rgba(255,255,255,0.05);
+            --stat-bg: #2c2c2c;
+            --border-color: #444;
+            --input-bg: #2c2c2c;
+            --input-text: #fff;
+            --input-border: #444;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             max-width: 600px;
             margin: 0 auto;
             padding: 20px;
-            background-color: #f4f6f8;
-            color: #333;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
         }
         h1, h2 { text-align: center; }
         .card {
-            background: white;
+            background: var(--card-bg);
             border-radius: 12px;
             padding: 20px;
             margin-bottom: 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 5px var(--card-shadow);
         }
         .btn-group {
             display: flex;
@@ -41,6 +66,9 @@
         
         .btn-milk { background-color: #e3f2fd; color: #1565c0; }
         .btn-milk:hover { background-color: #bbdefb; }
+
+        .btn-pump { background-color: #f3e5f5; color: #7b1fa2; }
+        .btn-pump:hover { background-color: #e1bee7; }
 
         .btn-breast { background-color: #fce4ec; color: #c2185b; }
         .btn-breast:hover { background-color: #f8bbd0; }
@@ -70,9 +98,10 @@
             text-align: center;
             margin-bottom: 20px;
         }
-        .stat-box { background: #f9f9f9; padding: 10px; border-radius: 8px; }
+        .stat-box { background: var(--stat-bg); padding: 10px; border-radius: 8px; }
         .stat-value { font-size: 1.2em; font-weight: bold; display: block; }
         .stat-label { font-size: 0.7em; color: #666; }
+        body.dark-mode .stat-label { color: #aaa; }
 
         #log-list {
             list-style: none;
@@ -82,7 +111,7 @@
         }
         .log-item {
             padding: 10px;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--border-color);
             display: flex;
             justify-content: space-between;
         }
@@ -91,12 +120,14 @@
         /* Form Inputs */
         input[type="number"], input[type="datetime-local"], select {
             padding: 10px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--input-border);
             border-radius: 6px;
             font-size: 16px;
             width: 100%;
             box-sizing: border-box;
             margin-bottom: 10px;
+            background-color: var(--input-bg);
+            color: var(--input-text);
         }
         .input-group {
             margin-bottom: 10px;
@@ -105,11 +136,24 @@
             display: block;
             margin-bottom: 5px;
             font-size: 0.9em;
-            color: #555;
+            color: var(--text-color);
+            opacity: 0.8;
+        }
+
+        .dark-mode-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: 1px solid var(--text-color);
+            color: var(--text-color);
+            padding: 8px 12px;
+            font-size: 0.9em;
         }
     </style>
 </head>
 <body>
+    <button class="dark-mode-toggle" onclick="toggleDarkMode()">🌓 Mode</button>
 
     <h1>Baby Logger</h1>
 
@@ -124,6 +168,19 @@
             <button type="button" class="btn-milk" style="background-color: #ffcdd2; color: #c62828;" onclick="resetMilk()">Clear</button>
         </div>
         <button type="button" id="btn-record-milk" class="btn-action" onclick="submitMilk(this)">Record Milk</button>
+    </div>
+
+    <!-- Pump Tracker Section -->
+    <div class="card">
+        <h2>🧴 Pump Tracker</h2>
+        <div class="display-amount"><span id="pump-amount">0</span> oz</div>
+        <div class="btn-group">
+            <button type="button" class="btn-pump" onclick="addPump(0.5)">+ 0.5 oz</button>
+            <button type="button" class="btn-pump" onclick="addPump(1.0)">+ 1.0 oz</button>
+            <button type="button" class="btn-pump" onclick="addPump(2.0)">+ 2.0 oz</button>
+            <button type="button" class="btn-pump" style="background-color: #ffcdd2; color: #c62828;" onclick="resetPump()">Clear</button>
+        </div>
+        <button type="button" id="btn-record-pump" class="btn-action" onclick="submitPump(this)">Record Pump</button>
     </div>
 
     <!-- Breast Feeding Section -->
@@ -169,6 +226,10 @@
                     <span class="stat-label">oz Milk</span>
                 </div>
                 <div class="stat-box">
+                    <span class="stat-value" id="total-pumped">0</span>
+                    <span class="stat-label">oz Pumped</span>
+                </div>
+                <div class="stat-box">
                     <span class="stat-value" id="total-breast">0</span>
                     <span class="stat-label">min Breast</span>
                 </div>
@@ -198,6 +259,7 @@
             <label>Type</label>
             <select id="manual-type" onchange="toggleManualAmount()">
                 <option value="milk">Milk (oz)</option>
+                <option value="pump">Pump (oz)</option>
                 <option value="wet">Wet Diaper</option>
                 <option value="bm">BM Diaper</option>
                 <option value="wet+bm">Both (Wet & BM)</option>

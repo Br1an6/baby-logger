@@ -4,9 +4,12 @@ A simple self-hosted web service to track baby activities (Milk, Wet Diapers, BM
 Built with a **Golang** backend and **TypeScript** frontend. Please note that this has no Auth options. Please run this locally.
 
 ## Features
-- **Milk Tracking**: Accumulate ounces (0.5, 1, 2) and record.
-- **Diaper Tracking**: One-click recording for Wet and BM diapers.
-- **Statistics**: View totals and history for the last 1 hour, 24 hours, or All time.
+- **Milk Tracking**: Accumulate ounces (0.5, 1, 2) and record feedings.
+- **Pump Tracking**: Track mother's pumped milk volume (0.5, 1, 2).
+- **Breast Feeding**: Record breastfeeding duration for each side.
+- **Diaper Tracking**: One-click recording for Wet, BM, or Both diapers.
+- **Dark Mode**: Switch between light and dark themes (persisted in browser).
+- **Statistics**: View totals and history for the last 1 hour, 24 hours, today, or All time.
 - **Data Persistence**: Data is saved to a local `baby.log` file in JSON Lines format.
 
 ## Prerequisites
@@ -47,9 +50,14 @@ PORT=5000 make run
 ```
 
 ### 3. Usage
+- **Dark Mode**: Tap the "🌓 Mode" button in the top right to toggle between light and dark themes.
 - **Milk**: Tap "+ 0.5 oz", "+ 1.0 oz" etc. to sum up the amount. Click "Record Milk" to save.
-- **Diaper**: Tap "Wet Diaper" or "BM Diaper" to save immediately.
+- **Pump**: Tap "+ 0.5 oz", "+ 1.0 oz" etc. to sum up the pumped amount. Click "Record Pump" to save.
+- **Breast Feeding**: Enter duration and select "Left Breast" or "Right Breast".
+- **Diaper**: Tap "Wet", "BM", or "Both" to save immediately.
 - **History**: Click "Last 1 Hr", "Last 24 Hrs", or "All Time" to see the summary and log list.
+- **Manual Entry**: Use the "Manual Entry" section to backdate logs or add specific types.
+- **Undo**: Use "Undo Last Entry" to remove the most recent record.
 
 ### 4. Development (Frontend)
 If you want to modify the TypeScript code in `src/app.ts`:
