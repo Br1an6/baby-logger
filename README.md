@@ -1,5 +1,7 @@
 # Baby Logger
 
+[![MIT License](https://img.shields.io/apm/l/atomic-design-ui.svg?)](https://github.com/tterb/atomic-design-ui/blob/master/LICENSEs) ![version](https://img.shields.io/badge/version-0.1.0-blue)
+
 A simple self-hosted web service to track baby activities (Milk, Wet Diapers, BM Diapers).
 Built with a **Golang** backend and **TypeScript** frontend. Please note that this has no Auth options. Please run this locally.
 
