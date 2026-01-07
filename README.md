@@ -112,4 +112,3 @@ All data is stored in `baby.log` in the running directory. Back up this file to 
 * Add Auth method
 * Configuration flags for file size and file path
 * Log rotation and cache size
-* Release files
