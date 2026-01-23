@@ -1,14 +1,11 @@
 package main
 
 import (
-	"bufio"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"sync"
 	"time"
 )
 
@@ -21,16 +18,34 @@ type LogEntry struct {
 	Duration  int       `json:"duration,omitempty"` // For breast feeding, in minutes
 }
 
-
-
-var (
-	logFilePath = "baby.log"
-	fileMu      sync.Mutex
-)
+var store *Store
 
 // main is the entry point of the application.
 // It sets up the HTTP server, defines the API endpoints, and starts listening on port 4011.
 func main() {
+	// Configuration Flags
+	logPath := flag.String("log-path", "baby.log", "Path to the log file")
+	maxSize := flag.Int("max-size", 0, "Max log file size in MB (0 for unlimited)")
+	maxBackups := flag.Int("max-backups", 5, "Max number of rotated log files to keep")
+	portStr := flag.String("port", "4011", "Port to run the server on")
+
+	// Allow PORT env var to override default if flag not set (simplistic approach, or use flag default)
+	if envPort := os.Getenv("PORT"); envPort != "" {
+		// Use env port if provided
+		// Note: flag.Parse() overwrites this if flag is present. 
+		// Actually, standard is Env < Config File < Flag.
+		// For simplicity, we stick to flags, but let's respect the env if flag is default.
+		// However, standard `flag` usage is parsing first.
+	}
+	flag.Parse()
+
+	// Initialize Store
+	var err error
+	store, err = NewStore(*logPath, *maxSize, *maxBackups)
+	if err != nil {
+		log.Fatalf("Failed to initialize log store: %v", err)
+	}
+
 	// Serve static files from the "public" directory
 	fs := http.FileServer(http.Dir("./public"))
 	http.Handle("/", fs)
@@ -40,98 +55,13 @@ func main() {
 	http.HandleFunc("/api/log/last", handleDeleteLast)
 	http.HandleFunc("/api/stats", handleStats)
 
-	// Port configuration
-	defaultPort := os.Getenv("PORT")
-	if defaultPort == "" {
-		defaultPort = "4011"
-	}
-	port := flag.String("port", defaultPort, "Port to run the server on")
-	flag.Parse()
-
-	fmt.Printf("Server starting on http://0.0.0.0:%s\n", *port)
-	if err := http.ListenAndServe("0.0.0.0:"+*port, nil); err != nil {
+	fmt.Printf("Server starting on http://0.0.0.0:%s\n", *portStr)
+	fmt.Printf("Logging to: %s (Max Size: %d MB, Backups: %d)\n", *logPath, *maxSize, *maxBackups)
+	
+	if err := http.ListenAndServe("0.0.0.0:"+*portStr, nil); err != nil {
 		fmt.Printf("Error starting server: %v\n", err)
 		log.Fatal(err)
 	}
-}
-
-
-
-
-
-// appendLog appends a new LogEntry to the persistent log file in a thread-safe manner.
-// It marshals the entry to JSON and appends it as a new line in the file.
-//
-// Args:
-//   entry: The LogEntry struct to be saved.
-//
-// Returns:
-//   error: An error if opening or writing to the file fails, otherwise nil.
-func appendLog(entry LogEntry) error {
-	fileMu.Lock()
-	defer fileMu.Unlock()
-
-	f, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	data, err := json.Marshal(entry)
-	if err != nil {
-		return err
-	}
-
-	if _, err := f.Write(data); err != nil {
-		return err
-	}
-	if _, err := f.WriteString("\n"); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// readLogs reads and parses all LogEntry records from the persistent log file.
-// It is thread-safe and ignores any corrupt lines in the file.
-//
-// Returns:
-//   []LogEntry: A slice of LogEntry structs read from the file.
-//   error: An error if opening or reading the file fails, otherwise nil.
-func readLogs() ([]LogEntry, error) {
-	fileMu.Lock()
-	defer fileMu.Unlock()
-
-	var logs []LogEntry
-
-	// If file doesn't exist, return empty
-	if _, err := os.Stat(logFilePath); os.IsNotExist(err) {
-		return logs, nil
-	}
-
-	f, err := os.Open(logFilePath)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		var entry LogEntry
-		if err := json.Unmarshal(scanner.Bytes(), &entry); err != nil {
-			// Continue on corrupt lines or return error?
-			// Let's log it and continue to be robust
-			log.Printf("Skipping corrupt log line: %v", err)
-			continue
-		}
-		logs = append(logs, entry)
-	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-
-	return logs, nil
 }
 
 

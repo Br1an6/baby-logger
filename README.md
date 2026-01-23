@@ -112,7 +112,5 @@ All data is stored in `baby.log` in the running directory. Back up this file to 
 
 ## TODO:
 * Add Auth method
-* Configuration flags for file size and file path
-* Log rotation and cache size
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/I3I81RWCLP)

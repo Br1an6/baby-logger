@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Baby Logger</title>
+    <style>
+        :root {
+            --bg-color: #f4f6f8;
+            --text-color: #333;
+            --card-bg: white;
+            --border-color: #ddd;
+        }
+        body.dark-mode {
+            --bg-color: #121212;
+            --text-color: #ffffff;
+            --card-bg: #1e1e1e;
+            --border-color: #444;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h1 { margin-top: 0; }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        th { background-color: rgba(0,0,0,0.05); }
+        
+        .actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-delete { background-color: #e57373; color: white; }
+        .btn-delete:hover { background-color: #d32f2f; }
+        
+        .btn-back { background-color: #90a4ae; color: white; }
+        .btn-back:hover { background-color: #607d8b; }
+
+        .dark-mode-toggle {
+            float: right;
+            background: none;
+            border: 1px solid var(--text-color);
+            color: var(--text-color);
+            padding: 5px 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button class="dark-mode-toggle" onclick="toggleDarkMode()">🌓 Mode</button>
+        <h1>Data Management</h1>
+        <p>Select entries to delete.</p>
+
+        <div class="actions">
+            <button class="btn-back" onclick="window.location.href='/'">Back to Home</button>
+            <button class="btn-delete" onclick="deleteSelected()">Delete Selected</button>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th><input type="checkbox" onclick="toggleSelectAll(this)"></th>
+                    <th>Time</th>
+                    <th>Type</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody id="log-table-body">
+                <!-- Rows will be populated here -->
+            </tbody>
+        </table>
+    </div>
+
+    <script src="admin.js"></script>
+    <script>
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('darkMode', document.body.classList.contains('dark-mode') ? 'true' : 'false');
+        }
+        if (localStorage.getItem('darkMode') === 'true' || 
+           (localStorage.getItem('darkMode') === null && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.body.classList.add('dark-mode');
+        }
+    </script>
+</body>
+</html>

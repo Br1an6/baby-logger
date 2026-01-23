@@ -1,11 +1,10 @@
 package main
 
 import (
-	"bufio"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"time"
 )
 
@@ -19,18 +18,21 @@ type StatsResponse struct {
 	Logs            []LogEntry `json:"logs"`
 }
 
-// handleLog processes POST requests to record a new activity event.
-// It decodes the JSON body into a LogEntry, sets the timestamp if missing, and appends it to the log file.
-//
-// Args:
-//   w: The http.ResponseWriter to write the response to.
-//   r: The *http.Request containing the request details and body.
+// handleLog processes requests to the /api/log endpoint.
+// POST: Records a new activity event.
+// DELETE: Deletes specific log entries based on their timestamps.
 func handleLog(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
+	if r.Method == http.MethodPost {
+		handleCreateLog(w, r)
+	} else if r.Method == http.MethodDelete {
+		handleBatchDeleteLog(w, r)
+	} else {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
 	}
+}
 
+// handleCreateLog processes the POST request to add a log entry.
+func handleCreateLog(w http.ResponseWriter, r *http.Request) {
 	var entry LogEntry
 	if err := json.NewDecoder(r.Body).Decode(&entry); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
@@ -42,7 +44,7 @@ func handleLog(w http.ResponseWriter, r *http.Request) {
 		entry.Timestamp = time.Now()
 	}
 
-	if err := appendLog(entry); err != nil {
+	if err := store.Append(entry); err != nil {
 		log.Printf("Error writing log: %v", err)
 		http.Error(w, "Failed to save log", http.StatusInternalServerError)
 		return
@@ -52,12 +54,35 @@ func handleLog(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"status": "saved"})
 }
 
+// handleBatchDeleteLog processes the DELETE request to remove log entries.
+func handleBatchDeleteLog(w http.ResponseWriter, r *http.Request) {
+	var timestamps []time.Time
+	if err := json.NewDecoder(r.Body).Decode(&timestamps); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if len(timestamps) == 0 {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	// Get initial count to calculate deleted count
+	initialCount := len(store.GetAll())
+
+	if err := store.DeleteBatch(timestamps); err != nil {
+		log.Printf("Error deleting logs: %v", err)
+		http.Error(w, "Failed to delete logs", http.StatusInternalServerError)
+		return
+	}
+	
+	finalCount := len(store.GetAll())
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"status": "deleted", "count": fmt.Sprintf("%d", initialCount-finalCount)})
+}
+
 // handleStats processes GET requests to retrieve aggregated statistics and log entries.
-// It filters logs based on the "duration" query parameter (1h, 24h, today, all) and calculates totals.
-//
-// Args:
-//   w: The http.ResponseWriter to write the response to.
-//   r: The *http.Request containing the query parameters.
 func handleStats(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -66,12 +91,8 @@ func handleStats(w http.ResponseWriter, r *http.Request) {
 
 	durationStr := r.URL.Query().Get("duration") // "1h", "24h", "today", "all"
 	
-	logs, err := readLogs()
-	if err != nil {
-		log.Printf("Error reading logs: %v", err)
-		http.Error(w, "Failed to read logs", http.StatusInternalServerError)
-		return
-	}
+	// Use In-Memory Store
+	logs := store.GetAll()
 
 	filteredLogs := []LogEntry{}
 	now := time.Now()
@@ -137,60 +158,17 @@ func handleStats(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(stats)
 }
 
-// handleDeleteLast removes the most recent log entry from the persistent file.
-// It reads all lines, removes the last one, and rewrites the file.
-//
-// Args:
-//   w: The http.ResponseWriter to write the response to.
-//   r: The *http.Request.
+// handleDeleteLast removes the most recent log entry.
 func handleDeleteLast(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete && r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	fileMu.Lock()
-	defer fileMu.Unlock()
-
-	// Read all lines
-	f, err := os.Open(logFilePath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			http.Error(w, "No logs to delete", http.StatusNotFound)
-			return
-		}
-		http.Error(w, "Failed to read logs", http.StatusInternalServerError)
+	if err := store.DeleteLast(); err != nil {
+		log.Printf("Error deleting last log: %v", err)
+		http.Error(w, "Failed to delete last log: "+err.Error(), http.StatusInternalServerError)
 		return
-	}
-	
-	var lines []string
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
-	f.Close()
-
-	if len(lines) == 0 {
-		http.Error(w, "Log file is empty", http.StatusNotFound)
-		return
-	}
-
-	// Remove the last line
-	lines = lines[:len(lines)-1]
-
-	// Rewrite the file
-	f, err = os.OpenFile(logFilePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		http.Error(w, "Failed to open log file for rewriting", http.StatusInternalServerError)
-		return
-	}
-	defer f.Close()
-
-	for _, line := range lines {
-		if _, err := f.WriteString(line + "\n"); err != nil {
-			http.Error(w, "Failed to write log file", http.StatusInternalServerError)
-			return
-		}
 	}
 
 	w.WriteHeader(http.StatusOK)
