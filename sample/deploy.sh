@@ -34,11 +34,12 @@ ssh -o StrictHostKeyChecking=no "$USER@$HOST" << EOF
     # 1. Stop existing process
     pkill baby-logger || true
     
-    # 2. Backup baby.log
-    if [ -f baby.log ]; then
-        cp baby.log /tmp/baby.log.bak
-        echo "💾  Backed up baby.log"
-    fi
+    # 2. Backup baby.log and rotated logs
+    # Using cp -r to be safe, though cp with glob works too
+    # We copy baby.log* to /tmp/backup_logs/
+    mkdir -p /tmp/backup_logs
+    cp baby.log* /tmp/backup_logs/ 2>/dev/null || true
+    echo "💾  Backed up log files"
     
     # 3. Clean directory (removes garbage files)
     # Be extremely careful with rm -rf *
@@ -47,11 +48,10 @@ ssh -o StrictHostKeyChecking=no "$USER@$HOST" << EOF
         echo "🧹  Cleaned directory"
     fi
     
-    # 4. Restore baby.log
-    if [ -f /tmp/baby.log.bak ]; then
-        mv /tmp/baby.log.bak baby.log
-        echo "💾  Restored baby.log"
-    fi
+    # 4. Restore logs
+    cp -r /tmp/backup_logs/* . 2>/dev/null || true
+    rm -rf /tmp/backup_logs
+    echo "💾  Restored log files"
     
     # 5. Extract new files
     tar -xzf /tmp/baby-logger-deploy.tar.gz -C $REMOTE_DIR
