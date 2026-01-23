@@ -68,8 +68,16 @@ $RemoteCommands = @"
     # 6. Start service
     chmod +x baby-logger
     nohup ./baby-logger > server.log 2>&1 &
+    PID=$!
     
-    echo "✅  Service restarted! PID: \$!"
+    echo "✅  Service restarted! PID: $PID"
+    echo "⏳  Waiting for server to initialize..."
+    sleep 2
+    
+    echo "📝  Last 20 lines of server.log:"
+    echo "--------------------------------"
+    tail -n 20 server.log
+    echo "--------------------------------"
 "@
 
 # Execute remote commands
