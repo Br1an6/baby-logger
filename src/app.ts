@@ -1,6 +1,10 @@
 // State
 let currentMilkAmount: number = 0;
 let currentPumpAmount: number = 0;
+let currentStatsDuration = 'today';
+let currentStatsPage = 1;
+let currentStatsLimit = 50;
+let isStatsLoading = false;
 
 // Log Entry Interface
 interface LogEntry {
@@ -174,58 +178,69 @@ async function sendLog(entry: LogEntry, btn?: HTMLElement) {
 }
 
 // Load Stats
-async function loadStats(duration: string) {
-    // Highlight active button
-    document.querySelectorAll('.btn-stats').forEach(b => b.classList.remove('active'));
-    const btns = document.querySelectorAll('.btn-stats');
-    btns.forEach(b => {
-        if (b.getAttribute('onclick')?.includes(`'${duration}'`)) {
-            b.classList.add('active');
-        }
-    });
+async function loadStats(duration: string, reset: boolean = true) {
+    if (reset) {
+        currentStatsDuration = duration;
+        currentStatsPage = 1;
+        
+        // Clear list if resetting
+        const list = document.getElementById('log-list');
+        if (list) list.innerHTML = '';
+        
+        // Hide Load More initially
+        const loadMoreBtn = document.getElementById('btn-load-more');
+        if(loadMoreBtn) loadMoreBtn.style.display = 'none';
+
+        // Highlight active button
+        document.querySelectorAll('.btn-stats').forEach(b => b.classList.remove('active'));
+        const btns = document.querySelectorAll('.btn-stats');
+        btns.forEach(b => {
+            if (b.getAttribute('onclick')?.includes(`'${duration}'`)) {
+                b.classList.add('active');
+            }
+        });
+    }
+
+    if (isStatsLoading) return;
+    isStatsLoading = true;
 
     try {
-        const res = await fetch(`/api/stats?duration=${duration}`);
+        const res = await fetch(`/api/stats?duration=${duration}&page=${currentStatsPage}&limit=${currentStatsLimit}`);
         if (!res.ok) throw new Error("Failed to load stats");
         
         const data = await res.json();
-        renderStats(data);
+        
+        // Update totals regardless of page (since server returns totals for ALL matching logs)
+        renderStatsTotals(data);
+        
+        // Append logs
+        renderStatsLogs(data.logs || []);
+
+        // Manage Load More Button
+        const loadMoreBtn = document.getElementById('btn-load-more');
+        if (loadMoreBtn) {
+            if ((data.logs || []).length < currentStatsLimit) {
+                // End of list
+                loadMoreBtn.style.display = 'none';
+            } else {
+                loadMoreBtn.style.display = 'block';
+            }
+        }
+
     } catch (err) {
         console.error(err);
         alert("Failed to load stats");
+    } finally {
+        isStatsLoading = false;
     }
 }
 
-// Undo Last Entry
-async function undoLast() {
-    if (!confirm("Are you sure you want to delete the last entry?")) return;
-
-    try {
-        const res = await fetch('/api/log/last', { method: 'DELETE' });
-        if (!res.ok) {
-            const txt = await res.text();
-            throw new Error(txt || "Failed to delete");
-        }
-        
-        // Refresh stats if visible
-        const container = document.getElementById('stats-container');
-        if (container && container.style.display !== 'none') {
-             const activeBtn = document.querySelector('.btn-stats.active');
-             let duration = '24h';
-             if (activeBtn) {
-                 const match = activeBtn.getAttribute('onclick')?.match(/'([^']+)'/);
-                 if (match) duration = match[1];
-             }
-             await loadStats(duration);
-        } else {
-            alert("Last entry deleted.");
-        }
-    } catch (err) {
-        alert("Error deleting: " + err);
-    }
+function loadMoreStats() {
+    currentStatsPage++;
+    loadStats(currentStatsDuration, false);
 }
 
-function renderStats(data: any) {
+function renderStatsTotals(data: any) {
     const container = document.getElementById('stats-container');
     if (container) container.style.display = 'block';
 
@@ -243,44 +258,63 @@ function renderStats(data: any) {
 
     const countBM = document.getElementById('count-bm');
     if (countBM) countBM.innerText = (data.diaper_bm || 0).toString();
+}
 
+function renderStatsLogs(logs: any[]) {
     const list = document.getElementById('log-list');
-    if (list) {
-        list.innerHTML = '';
-        const logs = data.logs || [];
-        logs.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    if (!list) return;
+    
+    // We append, not clear, because of pagination
+    
+    logs.forEach((log: any) => {
+        const li = document.createElement('li');
+        li.className = 'log-item';
+        
+        const timeStr = new Date(log.timestamp).toLocaleString();
+        let desc = "";
+        let icon = "";
+        
+        if (log.type === 'milk') {
+            icon = "🍼";
+            desc = `Milk (${log.amount} oz)`;
+        } else if (log.type === 'pump') {
+            icon = "🧴";
+            desc = `Pump (${log.amount} oz)`;
+        } else if (log.type === 'wet') {
+            icon = "💧";
+            desc = "Wet Diaper";
+        } else if (log.type === 'bm') {
+            icon = "💩";
+            desc = "BM Diaper";
+        } else if (log.type === 'wet+bm') {
+            icon = "💧💩";
+            desc = "Wet & BM Diaper";
+        } else if (log.type === 'breast') {
+            icon = "🤱";
+            desc = `Breast (${log.side}) - ${log.duration} min`;
+        }
 
-        logs.forEach((log: any) => {
-            const li = document.createElement('li');
-            li.className = 'log-item';
-            
-            const timeStr = new Date(log.timestamp).toLocaleString();
-            let desc = "";
-            let icon = "";
-            
-            if (log.type === 'milk') {
-                icon = "🍼";
-                desc = `Milk (${log.amount} oz)`;
-            } else if (log.type === 'pump') {
-                icon = "🧴";
-                desc = `Pump (${log.amount} oz)`;
-            } else if (log.type === 'wet') {
-                icon = "💧";
-                desc = "Wet Diaper";
-            } else if (log.type === 'bm') {
-                icon = "💩";
-                desc = "BM Diaper";
-            } else if (log.type === 'wet+bm') {
-                icon = "💧💩";
-                desc = "Wet & BM Diaper";
-            } else if (log.type === 'breast') {
-                icon = "🤱";
-                desc = `Breast (${log.side}) - ${log.duration} min`;
-            }
+        li.innerHTML = `<span>${icon} ${desc}</span> <span class="log-time">${timeStr}</span>`;
+        list.appendChild(li);
+    });
+}
 
-            li.innerHTML = `<span>${icon} ${desc}</span> <span class="log-time">${timeStr}</span>`;
-            list.appendChild(li);
-        });
+// Undo Last Entry
+async function undoLast() {
+    if (!confirm("Are you sure you want to delete the last entry?")) return;
+
+    try {
+        const res = await fetch('/api/log/last', { method: 'DELETE' });
+        if (!res.ok) {
+            const txt = await res.text();
+            throw new Error(txt || "Failed to delete");
+        }
+        
+        // Refresh current stats
+        await loadStats(currentStatsDuration, true);
+
+    } catch (err) {
+        alert("Error deleting: " + err);
     }
 }
 
@@ -295,6 +329,7 @@ function renderStats(data: any) {
 (window as any).submitManualEntry = submitManualEntry;
 (window as any).recordEvent = recordEvent;
 (window as any).loadStats = loadStats;
+(window as any).loadMoreStats = loadMoreStats;
 (window as any).undoLast = undoLast;
 (window as any).toggleManualAmount = toggleManualAmount;
 

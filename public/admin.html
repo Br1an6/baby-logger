@@ -85,6 +85,22 @@
             <button class="btn-delete" onclick="deleteSelected()">Delete Selected</button>
         </div>
 
+        <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.02); padding:10px; border-radius:4px;">
+            <div>
+                <span id="page-info">Page 1 of 1</span>
+                <span id="total-info" style="color:#666; font-size:0.9em; margin-left:10px;">(0 total)</span>
+            </div>
+            <div style="display:flex; gap:5px;">
+                <button id="btn-prev" onclick="changePage(-1)" disabled>Previous</button>
+                <button id="btn-next" onclick="changePage(1)" disabled>Next</button>
+                <select id="page-size" onchange="changePageSize()" style="margin-left:10px; padding:5px;">
+                    <option value="20">20 / page</option>
+                    <option value="50" selected>50 / page</option>
+                    <option value="100">100 / page</option>
+                </select>
+            </div>
+        </div>
+
         <table>
             <thead>
                 <tr>
@@ -98,6 +114,54 @@
                 <!-- Rows will be populated here -->
             </tbody>
         </table>
+
+        <footer style="margin-top: 40px; padding-bottom: 20px; text-align: center; font-size: 0.9em; opacity: 0.6;">
+            Powered by <a href="https://github.com/Br1an6/baby-logger" target="_blank" style="color: inherit; text-decoration: none; font-weight: bold;">Br1an6</a> (v0.1.2)
+        </footer>
+    </div>
+
+    <div id="edit-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center;">
+        <div style="background:var(--card-bg); padding:20px; border-radius:8px; width:300px; max-width:90%;">
+            <h2>Edit Entry</h2>
+            <input type="hidden" id="edit-original-timestamp">
+            
+            <div style="margin-bottom:10px;">
+                <label>Time</label>
+                <input type="datetime-local" id="edit-time" style="width:100%;">
+            </div>
+
+            <div style="margin-bottom:10px;">
+                <label>Type</label>
+                <select id="edit-type" style="width:100%; padding:5px;" onchange="toggleEditFields()">
+                    <option value="milk">Milk</option>
+                    <option value="pump">Pump</option>
+                    <option value="breast">Breast</option>
+                    <option value="wet">Wet Diaper</option>
+                    <option value="bm">BM Diaper</option>
+                    <option value="wet+bm">Wet + BM</option>
+                </select>
+            </div>
+
+            <div id="edit-amount-group" style="margin-bottom:10px;">
+                <label>Amount (oz)</label>
+                <input type="number" id="edit-amount" step="0.1" style="width:100%;">
+            </div>
+
+            <div id="edit-breast-group" style="margin-bottom:10px; display:none;">
+                <label>Side</label>
+                <select id="edit-side" style="width:100%; margin-bottom:5px;">
+                    <option value="L">Left</option>
+                    <option value="R">Right</option>
+                </select>
+                <label>Duration (min)</label>
+                <input type="number" id="edit-duration" style="width:100%;">
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                <button onclick="closeEditModal()" style="background:#ddd; color:#333;">Cancel</button>
+                <button onclick="saveEdit()" style="background:#4caf50; color:white;">Save</button>
+            </div>
+        </div>
     </div>
 
     <script src="admin.js"></script>

@@ -1,6 +1,6 @@
 # Baby Logger
 
-![version](https://img.shields.io/badge/version-0.1.1-blue)
+![version](https://img.shields.io/badge/version-0.1.2-blue)
 
 A simple self-hosted web service to track baby activities (Milk, Wet Diapers, BM Diapers ... etc).
 Built with a **Golang** backend and **TypeScript** frontend. Please note that this has no Auth options. Please run this locally.

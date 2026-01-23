@@ -21,14 +21,54 @@ type StatsResponse struct {
 // handleLog processes requests to the /api/log endpoint.
 // POST: Records a new activity event.
 // DELETE: Deletes specific log entries based on their timestamps.
+// PUT: Updates a specific log entry.
+// GET: Lists logs with pagination.
 func handleLog(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		handleCreateLog(w, r)
 	} else if r.Method == http.MethodDelete {
 		handleBatchDeleteLog(w, r)
+	} else if r.Method == http.MethodPut {
+		handleUpdateLog(w, r)
+	} else if r.Method == http.MethodGet {
+		handleListLogs(w, r)
 	} else {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+// handleListLogs returns a paginated list of logs.
+func handleListLogs(w http.ResponseWriter, r *http.Request) {
+	pageStr := r.URL.Query().Get("page")
+	limitStr := r.URL.Query().Get("limit")
+
+	page := 1
+	limit := 50
+
+	if pageStr != "" {
+		fmt.Sscanf(pageStr, "%d", &page)
+	}
+	if limitStr != "" {
+		fmt.Sscanf(limitStr, "%d", &limit)
+	}
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 50
+	}
+
+	logs, total := store.GetPage(page, limit)
+
+	resp := map[string]interface{}{
+		"logs":  logs,
+		"total": total,
+		"page":  page,
+		"limit": limit,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
 
 // handleCreateLog processes the POST request to add a log entry.
@@ -52,6 +92,38 @@ func handleCreateLog(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]string{"status": "saved"})
+}
+
+// handleUpdateLog processes the PUT request to update a log entry.
+func handleUpdateLog(w http.ResponseWriter, r *http.Request) {
+	// We expect the original timestamp in the query string to identify the record
+	tsStr := r.URL.Query().Get("timestamp")
+	if tsStr == "" {
+		http.Error(w, "Missing timestamp parameter", http.StatusBadRequest)
+		return
+	}
+
+	oldTimestamp, err := time.Parse(time.RFC3339, tsStr)
+	if err != nil {
+		// Try flexible parsing if needed, but RFC3339 is standard from JS toISOString
+		http.Error(w, "Invalid timestamp format", http.StatusBadRequest)
+		return
+	}
+
+	var newEntry LogEntry
+	if err := json.NewDecoder(r.Body).Decode(&newEntry); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if err := store.Update(oldTimestamp, newEntry); err != nil {
+		log.Printf("Error updating log: %v", err)
+		http.Error(w, "Failed to update log: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"status": "updated"})
 }
 
 // handleBatchDeleteLog processes the DELETE request to remove log entries.
@@ -90,6 +162,24 @@ func handleStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	durationStr := r.URL.Query().Get("duration") // "1h", "24h", "today", "all"
+	pageStr := r.URL.Query().Get("page")
+	limitStr := r.URL.Query().Get("limit")
+
+	page := 1
+	limit := 50 // Default limit for stats view
+
+	if pageStr != "" {
+		fmt.Sscanf(pageStr, "%d", &page)
+	}
+	if limitStr != "" {
+		fmt.Sscanf(limitStr, "%d", &limit)
+	}
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 50
+	}
 	
 	// Use In-Memory Store
 	logs := store.GetAll()
@@ -119,11 +209,12 @@ func handleStats(w http.ResponseWriter, r *http.Request) {
 		case "all":
 			include = true
 		default:
-			if durationStr == "" {
-				include = true
-			} else {
-				include = true
-			}
+			// Default to 24h if generic or empty, or maybe "today"? 
+			// Original code defaulted to including everything if default. 
+			// Let's stick to "all" if empty for consistency with original logic,
+			// or better, default to "24h" if not specified? 
+			// The original code: `if durationStr == "" { include = true }` -> ALL
+			include = true
 		}
 
 		if include {
@@ -131,10 +222,8 @@ func handleStats(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Calculate totals
-	stats := StatsResponse{
-		Logs: filteredLogs,
-	}
+	// Calculate totals on ALL matching logs
+	stats := StatsResponse{}
 
 	for _, entry := range filteredLogs {
 		switch entry.Type {
@@ -152,6 +241,30 @@ func handleStats(w http.ResponseWriter, r *http.Request) {
 			stats.DiaperWet++
 			stats.DiaperBM++
 		}
+	}
+
+	// Paginate the logs for the response
+	// Sort newest first
+	// Note: Store.GetAll returns in order of insertion (usually chronological).
+	// We want newest first for display.
+	// Let's reverse filteredLogs first.
+	totalFiltered := len(filteredLogs)
+	reversedLogs := make([]LogEntry, totalFiltered)
+	for i, e := range filteredLogs {
+		reversedLogs[totalFiltered-1-i] = e
+	}
+	
+	// Slice for pagination
+	start := (page - 1) * limit
+	end := start + limit
+	
+	if start >= totalFiltered {
+		stats.Logs = []LogEntry{}
+	} else {
+		if end > totalFiltered {
+			end = totalFiltered
+		}
+		stats.Logs = reversedLogs[start:end]
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -181,6 +181,47 @@ func (s *Store) pruneBackups() error {
 	return nil
 }
 
+// GetPage returns a specific page of logs, sorted newest first.
+// page is 1-based.
+func (s *Store) GetPage(page, pageSize int) ([]LogEntry, int) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	total := len(s.entries)
+	if total == 0 {
+		return []LogEntry{}, 0
+	}
+
+	// We want newest first, so we traverse s.entries backwards.
+	// Logic:
+	// Page 1: indices [total-1, total-pageSize]
+	// Start Index (from end): (page-1) * pageSize
+	// End Index (from end): page * pageSize
+
+	startFromEnd := (page - 1) * pageSize
+	if startFromEnd >= total {
+		return []LogEntry{}, total
+	}
+
+	endFromEnd := startFromEnd + pageSize
+	if endFromEnd > total {
+		endFromEnd = total
+	}
+
+	// Calculate actual indices in the slice
+	// s.entries[total-1] is the first item (newest)
+	// s.entries[total-1 - startFromEnd] is the start
+	
+	var result []LogEntry
+	for i := startFromEnd; i < endFromEnd; i++ {
+		// Index from start of slice
+		idx := total - 1 - i
+		result = append(result, s.entries[idx])
+	}
+
+	return result, total
+}
+
 // GetAll returns a copy of all entries.
 func (s *Store) GetAll() []LogEntry {
 	s.mu.RLock()
@@ -241,6 +282,51 @@ func (s *Store) DeleteLast() error {
 	}
 
 	s.entries = s.entries[:len(s.entries)-1]
+
+	// Rewrite file
+	f, err := os.OpenFile(s.filePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	for _, entry := range s.entries {
+		data, _ := json.Marshal(entry)
+		if _, err := f.Write(data); err != nil {
+			return err
+		}
+		if _, err := f.WriteString("\n"); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Update modifies an existing entry identified by oldTimestamp.
+func (s *Store) Update(oldTimestamp time.Time, newEntry LogEntry) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Find index
+	idx := -1
+	target := oldTimestamp.UTC()
+	// We also check Local because of how DeleteBatch does it, to be safe
+	targetLocal := oldTimestamp.Local()
+
+	for i, e := range s.entries {
+		if e.Timestamp.Equal(target) || e.Timestamp.Equal(targetLocal) {
+			idx = i
+			break
+		}
+	}
+
+	if idx == -1 {
+		return fmt.Errorf("entry not found")
+	}
+
+	// Update in memory
+	s.entries[idx] = newEntry
 
 	// Rewrite file
 	f, err := os.OpenFile(s.filePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
