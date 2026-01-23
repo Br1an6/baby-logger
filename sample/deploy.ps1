@@ -1,7 +1,7 @@
 # Configuration
-$User = "brian"
-$HostIP = "192.168.0.61"
-$RemoteDir = "/home/brian/Documents/baby-logger"
+$User = "user"
+$HostIP = "192.168.0.1"
+$RemoteDir = "/home/user/Documents/baby-logger"
 $LocalArtifact = "deploy.zip"
 
 Write-Host "🚧  Compiling frontend..." -ForegroundColor Cyan
@@ -62,12 +62,10 @@ $RemoteCommands = @"
     rm -rf /tmp/backup_logs
     
     # 5. Extract new files
-    if command -v unzip >/dev/null 2>&1;
-        unzip -o /tmp/$LocalArtifact -d .
-    else
-        # Fix quoting for python command
-        python3 -c "import zipfile; import sys; zipfile.ZipFile('/tmp/$LocalArtifact').extractall('.')"
-    fi
+    echo "📂  Extracting files..."
+    unzip -o /tmp/$LocalArtifact -d . 2>/dev/null || \
+    python3 -c "import zipfile; zipfile.ZipFile('/tmp/$LocalArtifact').extractall('.')"
+    
     rm /tmp/$LocalArtifact
     
     # 6. Start service
@@ -86,7 +84,8 @@ $RemoteCommands = @"
 "@
 
 # Execute remote commands
-ssh "${User}@${HostIP}" $RemoteCommands
+# Piping commands to ssh "bash" preserves quotes and avoids shell parsing issues on the local side
+$RemoteCommands | ssh "${User}@${HostIP}" "bash"
 
 Write-Host "🧹  Cleaning up local artifacts..." -ForegroundColor Cyan
 Remove-Item -Recurse -Force deploy_stage
