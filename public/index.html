@@ -152,6 +152,23 @@
             padding: 8px 12px;
             font-size: 0.9em;
         }
+
+        footer {
+            margin-top: 40px;
+            padding-bottom: 40px;
+            text-align: center;
+            font-size: 0.9em;
+            color: var(--text-color);
+            opacity: 0.6;
+        }
+        footer a {
+            color: inherit;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        footer a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
@@ -275,6 +292,10 @@
         </div>
         <button type="button" class="btn-action" style="background-color: #607d8b;" onclick="submitManualEntry()">Save Manual Entry</button>
     </div>
+
+    <footer>
+        Powered by <a href="https://github.com/Br1an6/baby-logger" target="_blank">Br1an6</a>
+    </footer>
 
     <script src="app.js"></script>
     <script>

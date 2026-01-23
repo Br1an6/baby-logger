@@ -10,6 +10,7 @@ yarn-error.log*
 # Dependency directories
 baby-logger
 baby-logger-linux
+*.exe
 baby.log
 node_modules/
 script/
