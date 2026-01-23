@@ -151,6 +151,21 @@
             color: var(--text-color);
             padding: 8px 12px;
             font-size: 0.9em;
+            cursor: pointer;
+        }
+        .admin-link {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 12px;
+            font-size: 0.9em;
+            text-decoration: none;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            z-index: 1000;
         }
 
         footer {
@@ -296,6 +311,8 @@
     <footer>
         Powered by <a href="https://github.com/Br1an6/baby-logger" target="_blank">Br1an6</a>
     </footer>
+
+    <a href="/admin.html" class="admin-link">⚙ Admin</a>
 
     <script src="app.js"></script>
     <script>
