@@ -5,7 +5,11 @@ $RemoteDir = "/home/brian/Documents/baby-logger"
 $LocalArtifact = "deploy.zip"
 
 Write-Host "🚧  Compiling frontend..." -ForegroundColor Cyan
-cmd /c "npx tsc"
+if (Test-Path ".\node_modules\.bin\tsc.cmd") {
+    & ".\node_modules\.bin\tsc.cmd"
+} else {
+    & ".\node_modules\.bin\tsc"
+}
 
 Write-Host "🍓  Cross-compiling for Raspberry Pi (linux/arm64)..." -ForegroundColor Cyan
 $env:GOOS = "linux"
@@ -33,6 +37,7 @@ Write-Host "Note: You will be prompted for your password ($User)." -ForegroundCo
 scp $LocalArtifact "${User}@${HostIP}:/tmp/${LocalArtifact}"
 
 Write-Host "🔄  Cleaning up and restarting service on remote..." -ForegroundColor Cyan
+# Using single quotes for python command string to avoid shell interpolation issues
 $RemoteCommands = @"
     # Ensure directory exists
     mkdir -p $RemoteDir
@@ -47,7 +52,7 @@ $RemoteCommands = @"
     echo "💾  Backed up log files"
     
     # 3. Clean directory
-    if [ "\$(pwd)" == "$RemoteDir" ]; then
+    if [ "$(pwd)" == "$RemoteDir" ]; then
         rm -rf ./*
         echo "🧹  Cleaned directory"
     fi
@@ -57,10 +62,10 @@ $RemoteCommands = @"
     rm -rf /tmp/backup_logs
     
     # 5. Extract new files
-    # Check for unzip, if not found try python
-    if command -v unzip >/dev/null 2>&1; then
+    if command -v unzip >/dev/null 2>&1;
         unzip -o /tmp/$LocalArtifact -d .
     else
+        # Fix quoting for python command
         python3 -c "import zipfile; import sys; zipfile.ZipFile('/tmp/$LocalArtifact').extractall('.')"
     fi
     rm /tmp/$LocalArtifact
