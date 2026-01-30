@@ -263,6 +263,9 @@ function renderStatsTotals(data: any) {
 function renderStatsLogs(logs: any[]) {
     const list = document.getElementById('log-list');
     if (!list) return;
+
+    // Sort logs by timestamp DESC (newest first)
+    logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     
     // We append, not clear, because of pagination
     
